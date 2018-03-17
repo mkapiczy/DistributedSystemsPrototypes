@@ -1,0 +1,4 @@
+struct Sync {
+    long msgId;
+    long timestamp;
+};
