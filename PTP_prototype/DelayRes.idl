@@ -1,5 +1,0 @@
-struct DelayResponse {
-    long msgId;
-    long requestId;
-    long masterTimeStamp;
-};
