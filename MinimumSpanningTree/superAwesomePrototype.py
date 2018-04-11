@@ -14,9 +14,9 @@ print(sota)
 
 # Own implementation
 Xtwo = np.array([[0, 8, 0, 3],
-                [0, 0, 2, 5],
-                [0, 0, 0, 6],
-                [0, 0, 0, 0]])
+                [8, 0, 2, 5],
+                [0, 2, 0, 6],
+                [3, 5, 6, 0]])
 
 # Get amount of nodes
 n_nodes = Xtwo.shape[1]
@@ -30,7 +30,7 @@ Xtwo[Xtwo == 0]=Vmax
 
 # Initialize index and vectors
 Midx = np.zeros((n_nodes, n_nodes))
-v1 = np.zeros((n_edges,n_nodes))
+v1 = np.zeros((n_nodes,n_nodes)) 
 
 # Note - Row: [Edge Weight, From Node, To Node]
 v_finale = np.zeros((n_edges,n_edges))
@@ -44,14 +44,14 @@ for i1 in range(0, n_nodes):
     Xtwo[np.transpose(Midx) > 0] = Vmax
     # Find min and save value and column index
     (mn, idx) = min((v,i) for i,v in enumerate(Xtwo[i1,:]))
-    v1[i1, 1] = idx
-    v1[i1, 3] = mn
+    v1[i1, 1] = mn  
+    v1[i1, 3] = idx
     # Save row index
     v1[i1, 2] = i1
     # Ensure we mark the edge as noted
-    Midx[i1,v1[i1,3]] = 1;
+    Midx[i1,int(v1[i1,3])] = 1;
 
     b=2
-
+print(Midx) #Bemærk: XTwo er ændret så den ligner matlab
 
 a = 2
