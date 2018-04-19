@@ -13,10 +13,12 @@ def executeJob(job, processToExecute, assignedProcessorTime):
     print("Job " + job + " executed by " + processToExecute)
 
 while len(doneJobs) < len(jobsList):
-    processToExecute = roundRobin.next()
+    processToExecute = next(roundRobin)
     jobTobeExecuted = choice(jobsList)
     assignedProcessorTime = randint(0, 10)
     executeJob(jobTobeExecuted, processToExecute, assignedProcessorTime)
     doneJobs.append(jobTobeExecuted)
+
+print('All jobs done')
 
 
