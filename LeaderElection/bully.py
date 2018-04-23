@@ -33,14 +33,14 @@ class Bully():
 
         self.check_servers_greenlet = None
 
-        self.addr = addr
+        self.myAddress = addr
 
         self.servers = []
         f = open(config_file, 'r')
         for line in f.readlines():
             line = line.rstrip()
             self.servers.append(line)
-        print('My addr: %s' % self.addr)
+        print('My addr: %s' % self.myAddress)
         print('Server list: %s' % (str(self.servers)))
 
         self.nuberOfNodes = len(self.servers)
@@ -48,7 +48,7 @@ class Bully():
         self.connections = []
 
         for i, server in enumerate(self.servers):
-            if server == self.addr:
+            if server == self.myAddress:
                 self.ownIndex = i
                 self.connections.append(self)
             else:
