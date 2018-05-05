@@ -3,9 +3,9 @@
 # Deterministic Finite Automata representation
 from timeit import default_timer as timer
 
-dfa = {0:{'0':0, '1':1},
-      1:{'0':2, '1':0},
-      2:{'0':1, '1':2}}
+dfa = { 0:{'0':0, '1':1},
+        1:{'0':2, '1':0},
+        2:{'0':1, '1':2}}
 
 # Running dfa against an input string drawn from the alphabet in question 
 # (after specifying the initial state and the set of accepting values) is then straightforward.

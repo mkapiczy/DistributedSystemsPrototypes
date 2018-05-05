@@ -14,39 +14,42 @@ class NodeState(Enum):
     DOWN = 'Down'
 
 class NodeStateVector():
+    # PARAMS
+    # State: The state of the node
+    # Leader: The nodes leader
+    # TaskDescription: Description og the task of the node
+    # HaltingNode: The node recently makes this node halt
+    # NodesUp: Array of other nodes in the system
     def __init__(self):
-        # Set state to being normal on init
         self.state = NodeState.NORMAL
-        # leader of the node
         self.leader = 0
-        # description of task
         self.taskDescription = None
-        # the node recently makes this node halt
         self.haltingNode = -1
-        # list of nodes which this node believes to be in operation
         self.nodesUp = []
 
-class Bully():
-    def __init__(self, addr, config_file='config'):
+class BullyAlgorithm():
+    def __init__(self, addr):
         self.NodeStateVector = NodeStateVector()
         self.NodeStateVector.state = NodeState.NORMAL
 
         self.check_servers_greenlet = None
         self.myAddress = addr
 
+        # Initialize all servers
         self.servers = []
-        f = open(config_file, 'r')
-        for line in f.readlines():
-            line = line.rstrip()
-            self.servers.append(line)
+        self.servers.append("127.0.0.1:9000")
+        self.servers.append("127.0.0.1:9001")
+        self.servers.append("127.0.0.1:9002")
+        self.servers.append("127.0.0.1:9003")
+        self.servers.append("127.0.0.1:9004")
+
         print('My addr: %s' % self.myAddress)
         print('Server list: %s' % (str(self.servers)))
 
         self.nuberOfNodes = len(self.servers)
-
         self.connections = []
 
-        # Connect to each orther server
+        # Connect to each other server
         for i, server in enumerate(self.servers):
             if server == self.myAddress:
                 self.ownIndex = i
@@ -174,15 +177,14 @@ class Bully():
 
 
 def main():
-    addr = sys.argv[1]
-    bully = Bully(addr)
+    ownAddress = sys.argv[1]
+    bully = BullyAlgorithm(ownAddress)
     s = zerorpc.Server(bully)
-    s.bind('tcp://' + addr)
+    s.bind('tcp://' + ownAddress)
     bully.start()
     # Start server
-    print('[%s] Starting ZeroRPC Server' % addr)
+    print('[%s] Starting ZeroRPC Server' % ownAddress)
     s.run()
-
 
 if __name__ == '__main__':
     main()
