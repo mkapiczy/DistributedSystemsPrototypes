@@ -1,91 +1,94 @@
+# For tcp connections nodes in between
 import zerorpc
+# For coroutines
 import gevent
+# System specific parameters
 import sys
+# Enums for nodestate
+from enum import Enum
 
-# How to run the program?
-# Run nodes separately e.g.
-# python bully.py 127.0.0.1:9000
-# python bully.py 127.0.0.1:9001
-# python bully.py 127.0.0.1:9002
-# python bully.py 127.0.0.1:9003
-# python bully.py 127.0.0.1:9004
-# Node on port 9004 will be the leader. Killing a node will force new election, which will result in node 9003 to be chosen as a new leader.
+class NodeState(Enum):
+    NORMAL = 'Normal'
+    ELECTION = 'Election'
+    REORGANIZATION = 'Reorganization'
+    DOWN = 'Down'
 
-class StateVector():
+class NodeStateVector():
+    # PARAMS
+    # State: The state of the node
+    # Leader: The nodes leader
+    # TaskDescription: Description og the task of the node
+    # HaltingNode: The node recently makes this node halt
+    # NodesUp: Array of other nodes in the system
     def __init__(self):
-        # state of the node
-        # [Down, Election, Reorganization, Normal]
-        self.state = 'Normal'
-        # leader of the node
+        self.state = NodeState.NORMAL
         self.leader = 0
-        # description of task
         self.taskDescription = None
-        # the node recently makes this node halt
         self.haltingNode = -1
-        # list of nodes which this node believes to be in operation
         self.nodesUp = []
 
-
-class Bully():
-    def __init__(self, addr, config_file='config'):
-        self.StateVector = StateVector()
-        self.StateVector.state = 'Normal'
+class BullyAlgorithm():
+    def __init__(self, addr):
+        self.NodeStateVector = NodeStateVector()
+        self.NodeStateVector.state = NodeState.NORMAL
 
         self.check_servers_greenlet = None
-
         self.myAddress = addr
 
+        # Initialize all servers
         self.servers = []
-        f = open(config_file, 'r')
-        for line in f.readlines():
-            line = line.rstrip()
-            self.servers.append(line)
+        self.servers.append("127.0.0.1:9000")
+        self.servers.append("127.0.0.1:9001")
+        self.servers.append("127.0.0.1:9002")
+        self.servers.append("127.0.0.1:9003")
+        self.servers.append("127.0.0.1:9004")
+
         print('My addr: %s' % self.myAddress)
         print('Server list: %s' % (str(self.servers)))
 
         self.nuberOfNodes = len(self.servers)
-
         self.connections = []
 
+        # Connect to each other server
         for i, server in enumerate(self.servers):
             if server == self.myAddress:
                 self.ownIndex = i
                 self.connections.append(self)
             else:
-                c = zerorpc.Client(timeout=2)
-                c.connect('tcp://' + server)
-                self.connections.append(c)
+                clientConn = zerorpc.Client(timeout=2)
+                clientConn.connect('tcp://' + server)
+                self.connections.append(clientConn)
 
-    def areYouThere(self):
+    def askForStatus(self):
         return True
 
-    def areYouNormal(self):
-        return self.StateVector.state == 'Normal'
+    def isStatusNormal(self):
+        return self.NodeStateVector.state == NodeState.NORMAL
 
     def halt(self, haltingNodeIndex):
-        self.StateVector.state = 'Election'
-        self.StateVector.haltingNode = haltingNodeIndex
+        self.NodeStateVector.state = NodeState.ELECTION
+        self.NodeStateVector.haltingNode = haltingNodeIndex
 
-    def newLeader(self, newLeader):
-        print('Call newLeader')
-        if self.StateVector.haltingNode == newLeader and self.StateVector.state == 'Election':
-            self.StateVector.leader = newLeader
-            self.StateVector.state = 'Reorganization'
+    def callNewLeader(self, newLeader):
+        print('Calling newLeader')
+        if self.NodeStateVector.haltingNode == newLeader and self.NodeStateVector.state == NodeState.ELECTION:
+            self.NodeStateVector.leader = newLeader
+            self.NodeStateVector.state = NodeState.REORGANIZATION
 
     def ready(self, j, x=None):
         print('Call ready')
-        if self.StateVector.leader == j and self.StateVector.state == "Reorganization":
-            self.StateVector.taskDescription = x
-            self.StateVector.state = 'Normal'
+        if self.NodeStateVector.leader == j and self.NodeStateVector.state == NodeState.REORGANIZATION:
+            self.NodeStateVector.taskDescription = x
+            self.NodeStateVector.state = NodeState.NORMAL
 
-    def election(self):
+    def callElection(self):
         print('Check the states of higher priority nodes - if there are any higher priority:')
         for i, server in enumerate(self.servers[self.ownIndex + 1:]):
             try:
-                self.connections[self.ownIndex + 1 + i].areYouThere()
+                self.connections[self.ownIndex + 1 + i].askForStatus()
                 if self.check_servers_greenlet is None:
-                    self.StateVector.leader = self.ownIndex + 1 + i
-                    self.StateVector.state = 'Normal'
+                    self.NodeStateVector.leader = self.ownIndex + 1 + i
+                    self.NodeStateVector.state = NodeState.NORMAL
                     self.check_servers_greenlet = self.pool.spawn(self.check())
                 return
             except zerorpc.TimeoutExpired:
@@ -93,80 +96,80 @@ class Bully():
 
         print('No higher priority nodes - So halt all lower priority nodes including this node:')
         self.halt(self.ownIndex)
-        self.StateVector.state = 'Election'
-        self.StateVector.haltingNode = self.ownIndex
-        self.StateVector.nodesUp = []
+        self.NodeStateVector.state = NodeState.ELECTION
+        self.NodeStateVector.haltingNode = self.ownIndex
+        self.NodeStateVector.nodesUp = []
         for i, server in enumerate(self.servers[self.ownIndex::-1]):
             try:
                 self.connections[i].halt(self.ownIndex)
             except zerorpc.TimeoutExpired:
                 print('%s Timeout!' % server)
                 continue
-            self.StateVector.nodesUp.append(self.connections[i])
+            self.NodeStateVector.nodesUp.append(self.connections[i])
 
         # Reached the 'election point', inform other nodes about new leader - yourself
         print('Inform nodes of the new leader:')
-        self.StateVector.leader = self.ownIndex
-        self.StateVector.state = 'Reorganization'
-        for node in self.StateVector.nodesUp:
+        self.NodeStateVector.leader = self.ownIndex
+        self.NodeStateVector.state = NodeState.REORGANIZATION
+        for node in self.NodeStateVector.nodesUp:
             try:
-                node.newLeader(self.ownIndex)
+                node.callNewLeader(self.ownIndex)
             except zerorpc.TimeoutExpired:
                 print('Timeout! Election will be restarted.')
-                self.election()
+                self.callElection()
                 return
 
         # Reorganization
-        for node in self.StateVector.nodesUp:
+        for node in self.NodeStateVector.nodesUp:
             try:
-                node.ready(self.ownIndex, self.StateVector.taskDescription)
+                node.ready(self.ownIndex, self.NodeStateVector.taskDescription)
             except zerorpc.TimeoutExpired:
                 print('Timeout!')
-                self.election()
+                self.callElection()
                 return
 
-        self.StateVector.state = 'Normal'
+        self.NodeStateVector.state = NodeState.NORMAL
         print('[%s] Starting ZeroRPC Server' % self.servers[self.ownIndex])
         self.check_servers_greenlet = self.pool.spawn(self.check())
 
     def recovery(self):
-        self.StateVector.haltingNode = -1
-        self.election()
+        self.NodeStateVector.haltingNode = -1
+        self.callElection()
 
     def check(self):
         while True:
             gevent.sleep(2)
-            if self.StateVector.state == 'Normal' and self.StateVector.leader == self.ownIndex:
+            if self.NodeStateVector.state == NodeState.NORMAL and self.NodeStateVector.leader == self.ownIndex:
                 for i, server in enumerate(self.servers):
                     if i != self.ownIndex:
                         try:
-                            response = self.connections[i].areYouNormal()
+                            response = self.connections[i].isStatusNormal()
                             print('%s : are_you_normal = %s' % (server, response))
                         except zerorpc.TimeoutExpired:
                             print('%s Timeout!' % server)
                             continue
 
                         if not response:
-                            self.election()
+                            self.callElection()
                             return
-            elif self.StateVector.state == 'Normal' and self.StateVector.leader != self.ownIndex:
+            elif self.NodeStateVector.state == NodeState.NORMAL and self.NodeStateVector.leader != self.ownIndex:
                 print('Check leader\'s state')
                 try:
-                    result = self.connections[self.StateVector.leader].areYouThere()
-                    print('%s : are_you_there = %s' % (self.servers[self.StateVector.leader], result))
+                    result = self.connections[self.NodeStateVector.leader].askForStatus()
+                    print('%s : are_you_there = %s' % (self.servers[self.NodeStateVector.leader], result))
                 except zerorpc.TimeoutExpired:
                     print('Leader down, Carry out new eleciton.')
                     self.timeout()
 
     def timeout(self):
-        if self.StateVector.state == 'Normal' or self.StateVector.state == 'Reorganization':
+        if self.NodeStateVector.state == NodeState.NORMAL or self.NodeStateVector.state == NodeState.REORGANIZATION:
             try:
-                self.connections[self.StateVector.leader].areYouThere()
+                self.connections[self.NodeStateVector.leader].askForStatus()
             except zerorpc.TimeoutExpired:
-                print('%s Timeout!' % self.servers[self.StateVector.leader])
-                self.election()
+                print('%s Timeout!' % self.servers[self.NodeStateVector.leader])
+                self.callElection()
         else:
-            self.election()
+            self.callElection()
 
     def start(self):
         self.pool = gevent.pool.Group()
@@ -174,15 +177,14 @@ class Bully():
 
 
 def main():
-    addr = sys.argv[1]
-    bully = Bully(addr)
+    ownAddress = sys.argv[1]
+    bully = BullyAlgorithm(ownAddress)
     s = zerorpc.Server(bully)
-    s.bind('tcp://' + addr)
+    s.bind('tcp://' + ownAddress)
     bully.start()
     # Start server
-    print('[%s] Starting ZeroRPC Server' % addr)
+    print('[%s] Starting ZeroRPC Server' % ownAddress)
     s.run()
-
 
 if __name__ == '__main__':
     main()
