@@ -1,12 +1,12 @@
-processesWrong = {'P1': {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6},
-                  'P2': {'g': 1, 'h': 2, 'i': 3},
-                  'P3': {'j': 1, 'k': 2}}
+processesWrong = {'P1': {'a': 1, 'b': 2, 'c': 3, 'd': 4},
+                  'P2': {'e': 1, 'f': 2, 'g': 3},
+                  'P3': {'h': 1, 'i': 2}}
 
-processesCorrect = {'P1': {'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6},
-                    'P2': {'g': 1, 'h': 2, 'i': 3},
-                    'P3': {'j': 1, 'k': 2}}
+processesCorrect = {'P1': {'a': 1, 'b': 2, 'c': 3, 'd': 4},
+                    'P2': {'e': 1, 'f': 2, 'g': 3},
+                    'P3': {'h': 1, 'i': 2}}
 
-messages = {'j': 'c', 'g': 'd', 'e': 'h', 'f': 'k'}
+messages = {'h': 'b', 'c': 'f', 'd': 'i'}
 
 
 def correctOrderingAccordingToLamportRules():
