@@ -8,25 +8,6 @@ processesCorrect = {'P1': {'a': 1, 'b': 2, 'c': 3, 'd': 4},
 
 messages = {'h': 'b', 'c': 'f', 'd': 'i'}
 
-
-def determineSenderClock(process, sendOperation):
-    senderClock = None
-    i = 0
-    while senderClock is None and i < len(processesWrong[process]) - 1:
-        senderClock = processesWrong[process].get(sendOperation)
-        i += 1
-    return senderClock
-
-
-def determineReceiverClock(process, receiveOperation):
-    receiverClock = None
-    i = 0
-    while receiverClock is None and i < len(processesWrong[process]) - 1:
-        receiverClock = processesWrong[process].get(receiveOperation)
-        i += 1
-    return receiverClock
-
-
 def correctReceiverClock(receiveOperation, senderClock):
     for p in processesWrong:
         if processesWrong[p].get(receiveOperation) is not None:
