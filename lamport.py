@@ -52,3 +52,14 @@ print('Processes wrong ordering ' + str(processesWrong))
 correctOrderingAccordingToLamportRules()
 
 print('Processes correct ordering ' + str(processesCorrect))
+
+
+def correctOrderingAccordingToLamportRules():
+    # iterate through messages in the system
+    for senderClock, receiverClock in messages:
+        # if receiver clock is smaller than sender clock than increment it
+        if receiverClock <= senderClock:
+            correctReceiverClock(receiverClock, senderClock)
+    # Improve local ordering after previous clocks adjustment
+    for p in processes:
+        correctLocalOrdering(p)
